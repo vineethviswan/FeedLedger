@@ -1,0 +1,663 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>Raymond Chen, Author at The Old New Thing</title>
+	<atom:link href="https://devblogs.microsoft.com/oldnewthing/author/oldnewthing/feed/" rel="self" type="application/rss+xml" />
+	<link>https://devblogs.microsoft.com/oldnewthing/author/oldnewthing/</link>
+	<description>Practical development throughout the evolution of Windows.</description>
+	<lastBuildDate>Tue, 24 Nov 2026 23:53:26 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	
+
+<image>
+	<url>https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2021/03/Microsoft-Favicon.png</url>
+	<title>Raymond Chen, Author at The Old New Thing</title>
+	<link>https://devblogs.microsoft.com/oldnewthing/author/oldnewthing/</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+	<item>
+		<title>What happens to entries in the CoreApplication Properties when the source apartment shuts down?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261124-00/?p=112889/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261124-00/?p=112889/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Tue, 24 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112889</guid>
+
+					<description><![CDATA[<p>Nothing, unless it's the last apartment.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261124-00/?p=112889/">What happens to entries in the CoreApplication Properties when the source apartment shuts down?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p><a href="https://devblogs.microsoft.com/oldnewthing/20261023-00/?p=112793/&amp;commentid=144868#comment-144868"> Commenter Luca Bacci observed</a>:</p>
+<blockquote class="q"><p>Don&#8217;t know why, but last I tried the COM static store (runtime class &#8220;Windows.ApplicationModel.Core.CoreApplication&#8221;) was accessible from an unpackaged, Win32 application. It also seems to tie entries to the originating apartment lifetime (namely: the apartment from which the property is added). Can you shed some light?</p></blockquote>
+<p>First part first: The COM static store is available to all applications.</p>
+<blockquote class="q"><p>This API is supported in Universal Windows Platform apps only, <a href="https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.core.coreapplication?view=winrt-28000#:~:text=This%20API%20is%20supported%20in%20Universal%20Windows%20Platform%20apps%20only%2C%20except%20for%20the%20Properties%20property%2C%20which%20is%20always%20available."> except for the <code>Properties</code> property, which is always available</a>.</p></blockquote>
+<p>Okay, now the second part: What happens to the entries in the CoreApplication Properties when the source apartment shuts down?</p>
+<p>Nothing.</p>
+<p>Nothing happens to them. They are still there. Here&#8217;s a demonstration:</p>
+<pre>#include &lt;stdio.h&gt;
+#include &lt;winrt/Windows.ApplicationModel.Core.h&gt;
+#include &lt;winrt/Windows.Foundation.Collections.h&gt;
+
+int main()
+{
+    winrt::init_apartment(winrt::apartment_type::single_threaded);
+
+    std::thread t([] {
+        winrt::init_apartment(winrt::apartment_type::single_threaded);
+        winrt::Windows::ApplicationModel::Core::CoreApplication::Properties().
+            Insert(L"meow", winrt::box_value(1));
+        winrt::uninit_apartment();
+        });
+
+    t.join();
+
+    auto value = winrt::unbox_value&lt;int&gt;(
+        winrt::Windows::ApplicationModel::Core::CoreApplication::Properties().
+        Lookup(L"meow"));
+    
+    printf("Got the value %d\n", value);
+    winrt::uninit_apartment();
+    return 0;
+}
+</pre>
+<p>After initializing COM on the main thread, we create a secondary thread, on which we also initialize COM in single-threaded mode, add a value to the <code>Core­Application.<wbr />Properties</code> called <code>"meow"</code> with a value of 1, and then uninitialize the apartment.</p>
+<p>Back on the main thread, we wait for that to finish, and then go to the <code>Core­Application.<wbr />Properties</code> and ask for the <code>"meow"</code> value, and hey, there it is!</p>
+<p>So the entries in <code>Core­Application.<wbr />Properties</code> do not expire at the expiration of the apartment that added them. But, they do expire when the <i>last</i> apartment shuts down, because that&#8217;s when COM shuts down for the entire process.</p>
+<p>Next time, we&#8217;ll investigate what Luca observed.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261124-00/?p=112889/">What happens to entries in the CoreApplication Properties when the source apartment shuts down?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261124-00/?p=112889/feed/</wfw:commentRss>
+			<slash:comments>1</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>Having two security products installed at the same time isn&#8217;t a great idea, but sometimes you have to do it</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261123-00/?p=112887/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261123-00/?p=112887/#respond</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Mon, 23 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Other]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112887</guid>
+
+					<description><![CDATA[<p>And then you're kind of stuck.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261123-00/?p=112887/">Having two security products installed at the same time isn&#8217;t a great idea, but sometimes you have to do it</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>Not too long ago, I noted that <a title="If one anti-malware software is good, does that make two better?" href="https://devblogs.microsoft.com/oldnewthing/20261008-00/?p=112762"> if you install multiple anti-malware products, they might each think the other is malware</a>.</p>
+<p>I used a metaphor of hiring two security services to patrol your building and making sure they know about each other so that they don&#8217;t treat the other one as an intruder. And I noted that you can&#8217;t introduce software products to each other.</p>
+<p>But you can, sort of.</p>
+<p>You can add each program to the other program&#8217;s exclusion list.</p>
+<p>So that at least lets them recognize each other, but that is only part of the problem.</p>
+<p>The bigger problem is that both products have made modifications to the system, and if they both try to modify the same thing (say, detouring the same function), things can get ugly. In fact, things can get ugly even if they detour different things, but happen to introduce dependencies that result in a collaborative lock hierarchy violation. For example, program 1 might detour a registry function, and their detour contacts a Web service to do some logging or validation, and program 2 detoured the network call, and in <i>that</i> detour, they access the registry to get some configuration information.</p>
+<p>Deadlock.</p>
+<p>In the building analogy, it&#8217;s as if both security companies tried to rewire the elevator. Who knows if one set of wires causes the other to start a fire. Or maybe one security company rewires the elevator so it makes a phone call to validate that the floor request is valid, but the other security company rewired the phone system so that whenever somebody tries to make a phone call, it summons security personnel to check on who is making the call, and the security personnel might need to use the elevator to get there.</p>
+<p>Commenter Michael Taylor asserts that best practice is <a href="https://devblogs.microsoft.com/oldnewthing/20261008-00/?p=112762%2F&amp;commentid=144834#comment-144834"> not to install two anti-malware programs at the same time</a> because they can collide with each other.</p>
+<p>The problem with large enterprises is that they sometimes feel that they are forced into installing multiple security software products because no single product does everything they want.</p>
+<p>For example, they may have one security package to prevent users from running malicious programs. And then endpoint detection and response software, for identifying and blocking suspicious network activity. And then they also have data loss protection software, to identify attempts to copy sensitive information to insecure locations, like copying a corporate document to a removable USB drive or uploading it to an unauthorized cloud service. And even if the cloud service is authorized, the data classification software needs to transfer the security classification of the document to the copy in the cloud service. These security classifications may be necessary for regulatory reasons, such as HIPAA or GDPR compliance.</p>
+<p>If you can&#8217;t find one program that does it all, then you find yourself forced to cobble together a hodgepodge of programs and take the risk that they won&#8217;t conflict.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261123-00/?p=112887/">Having two security products installed at the same time isn&#8217;t a great idea, but sometimes you have to do it</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261123-00/?p=112887/feed/</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>Another failed attempt to get the icon for the icon for the .. parent folder</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261120-00/?p=112883/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261120-00/?p=112883/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Fri, 20 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112883</guid>
+
+					<description><![CDATA[<p>Trying to generate a path that turns out to be invalid.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261120-00/?p=112883/">Another failed attempt to get the icon for the icon for the &lt;TT&gt;..&lt;/TT&gt; parent folder</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>Last time, we looked at <a title="Why do I get inconsistent results when I ask for the icon for the .. parent folder?" href="https://devblogs.microsoft.com/oldnewthing/20261119-00/?p=112879"> why asking <code>SHGet­File­Info</code> for the icon of <tt>..</tt> (the parent folder) produces inconsistent results</a>. One of the things the customer tried was concatenating the <tt>..</tt> to the current directory:</p>
+<pre>SHGetFileInfo(L"C:\\dir\\..", 0, &amp;info, sizeof(info),
+    SHGFI_ICON | SHGFI_SMALLICON | SHGFI_SYSICONINDEX);
+</pre>
+<p>This in fact made it worse: The function failed!</p>
+<p>What&#8217;s going on?</p>
+<p>As I noted last time, if the thing you pass in looks like a relative path, it will be resolved against the current directory. But in this case, the string we passed doesn&#8217;t look like a relative path, so no such resolution occurs. The string <tt>C:\dir\..</tt> is then sent through the namespace parser.</p>
+<p>The shell namespace is structured as a tree of &#8220;folders&#8221;, and each folder knows how to parse its immediate children (some of which which might be folders). Parsing starts at the root folder (the Desktop), which parses enough to identify what the immediate child item is, and if that child item is a folder, it passes the unparsed portion of the string to that child folder, and the process continues until the entire string is parsed.</p>
+<p>In the case of <tt>C:\dir\..</tt>, the first component is <tt>C:\</tt>, which is recognized as a drive letter. The drive letter is then given what&#8217;s left: <tt>dir\..</tt>, and it recognizes that <tt>dir\</tt> is a subdirectory. The folder <tt>dir</tt> then tries to parse <tt>..</tt>, and it says &#8220;I don&#8217;t have a file or subdirectory named <tt>..</tt>.&#8221; The parse fails.</p>
+<p>The shell namespace doesn&#8217;t have the concept of &#8220;something that looks like a child but really means to un-parse the last item.&#8221; If you want to &#8220;move up&#8221; the namespace, you do it by deleting the last component from the item ID list, not by appending a &#8220;move up&#8221; item.</p>
+<p><b>Bonus chatter</b>: Sure, but couldn&#8217;t the parser have simplified the string <tt>C:\dir\..</tt> to <tt>C:\</tt> before parsing?</p>
+<p>While it&#8217;s true that backslashes are used to separate file path components, there is no requirement that they be used to separate shell namespace components, nor are shell namespace folders prohibited from having <tt>..</tt> be the name of a valid child item. Each shell namespace folder can define its own syntax for sub-items, and while many of them carry forward the backslash convention, this is not a requirement. For example, the Internet Folder parses URIs, and in URIs, a backslash is just another boring character with no special meaning.</p>
+<p>If you want a function to resolve relative paths against the current directory while also compressing out <tt>.</tt> and <tt>..</tt> in paths, you can use <a href="https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew"> <code>Get­Full­Path­Name</code></a>. If all you care about is compressing out <tt>.</tt> and <tt>..</tt>, you can use <a href="https://learn.microsoft.com/en-us/windows/win32/api/pathcch/nf-pathcch-pathalloccombine"> <code>Path­Alloc­Combine</code></a> or one of its moral equivalents.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261120-00/?p=112883/">Another failed attempt to get the icon for the icon for the &lt;TT&gt;..&lt;/TT&gt; parent folder</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261120-00/?p=112883/feed/</wfw:commentRss>
+			<slash:comments>1</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>Why do I get inconsistent results when I ask for the icon for the .. parent folder?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261119-00/?p=112879/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261119-00/?p=112879/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Thu, 19 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112879</guid>
+
+					<description><![CDATA[<p>It depends on what the parent folder is.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261119-00/?p=112879/">Why do I get inconsistent results when I ask for the icon for the &lt;TT&gt;..&lt;/TT&gt; parent folder?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>A customer wanted their program to show a file listing with icons, and they also wanted to include an entry for the parent folder, programmatically known as <tt>..</tt> (double period).</p>
+<p><b>Update</b>: The idea is that they are showing a file listing unrelated to the file system. For example, they are an online photo album browser. They want to show all the photos in the current album, plus an icon that means &#8220;Go to the parent folder.&#8221; <b>End update</b></p>
+<p>They obtained icons by calling the <code>SHGetFileInfo</code> function, but they got weird, inconsistent results when they asked for the icon of the <tt>..</tt> parent folder.</p>
+<pre>SHGetFileInfo(L"..", 0, &amp;info, sizeof(info),
+    SHGFI_ICON | SHGFI_SMALLICON | SHGFI_SYSICONINDEX);
+</pre>
+<p>They found that when they ran the program in a debugger, it gave them the desired folder icon 🗀. But when it ran on the customer&#8217;s system, it showed a drive icon 🖴. What&#8217;s going on? Why is the icon changing depending on who is running the program?</p>
+<p>My psychic debugging powers¹ told me that the developer told their debugger to run the program with the current directory equal to something that is at least two directory levels away from the root. Perhaps they are using Visual Studio and accepted the default configuration that sets the current directory to <tt>$(ProjectDir)</tt>, and their project directory is eomthing like <tt>C:\<wbr />Users\<wbr />name\<wbr />repos\<wbr />contoso</tt>. On the other hand, the customer is running the program while the current directory is set to an immediate subdirectory of the drive root, like <tt>C:\<wbr />Contoso</tt>.</p>
+<p>When you pass <tt>".."</tt> to <code>SHGetFileInfo</code>, it is recognized as a relative path and is resolved against the current directory. And then you get the icon for whatever that turns out to be.</p>
+<p>Resulting iconfolderdrive</p>
+<table class="cp3" style="border-collapse: collapse;" border="1" cellspacing="0" cellpadding="3">
+<tbody>
+<tr>
+<th>Current directory</th>
+<td><tt>C:\repos\contoso</tt></td>
+<td><tt>C:\contoso</tt></td>
+</tr>
+<tr>
+<th><tt>".."</tt> resolves to</th>
+<td><tt>C:\repos</tt></td>
+<td><tt>C:\</tt></td>
+</tr>
+</tbody>
+</table>
+<p>So what should you do if you want to get a folder icon?</p>
+<p>You can pass the <code>SHGFI_<wbr />USE­FILE­ATTRIBUTES</code> flag, which means, &#8220;Just pretend that I gave you a valid path to a thing with the attributes I passed as the second parameter. What icon would you use for it?&#8221;</p>
+<pre>SHGetFileInfo(<span style="border: solid 1px currentcolor;">L"C:\\a", FILE_ATTRIBUTE_DIRECTORY</span>, &amp;info, sizeof(info),
+    <span style="border: solid 1px currentcolor;">SHGFI_USEFILEATTRIBUTES | </span>
+    SHGFI_ICON | SHGFI_SMALLICON | SHGFI_SYSICONINDEX);
+</pre>
+<p>We pass a file path of <tt>C:\a</tt> and say that its attributes are <code>FILE_<wbr />ATTRIBUTE_<wbr />DIRECTORY</code>. The actual path is not important, as long as it is a syntactically valid path.</p>
+<p>Next time, we&#8217;ll look at a follow-up question related to this problem.</p>
+<p>¹ I want to remind you that if you force me to do psychic debugging, then you have <i>failed</i>. When I coined the term &#8220;psychic debugging&#8221;, I used it to describe the case of debugging a problem where the person asking the question omitted crucial information, forcing me to go to the extra effort of obtaining that information through supernatural means. It&#8217;s like showing up at the passport office without having the proper forms filled out. The clerk can probably give you the correct form and help you fill it out, but they&#8217;re not going to be happy about it because you&#8217;re just creating extra work for them due to being ill-prepared.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261119-00/?p=112879/">Why do I get inconsistent results when I ask for the icon for the &lt;TT&gt;..&lt;/TT&gt; parent folder?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261119-00/?p=112879/feed/</wfw:commentRss>
+			<slash:comments>7</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>If the Windows documentation doesn&#8217;t list a particular technology as supporting an operation, does that mean that it doesn&#8217;t support it?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261118-00/?p=112870/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261118-00/?p=112870/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Wed, 18 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112870</guid>
+
+					<description><![CDATA[<p>Windows documents what it knows, but it doesn't know what third party network protocols support.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261118-00/?p=112870/">If the Windows documentation doesn&#8217;t list a particular technology as supporting an operation, does that mean that it doesn&#8217;t support it?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>In the Windows documentation for various file system operations, you will often find a section in the Remarks that says</p>
+<blockquote class="q">
+<p>This function is supported by the following technologies.</p>
+<table class="cp3" style="border-collapse: collapse;" border="1" cellspacing="0" cellpadding="3">
+<tbody>
+<tr>
+<th>Technology</th>
+<th>Supported</th>
+</tr>
+<tr>
+<td>Server Message Block (SMB) 3.0 protocol</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>SMB 3.0 Transparent Failover (TFO)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>SMB 3.0 with Scale-out File Shares (SO)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Cluster Shared Volume File System (CsvFS)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Resilient File System (ReFS)</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+</blockquote>
+<p>But what about network protocols that aren&#8217;t on the list? Does their absence mean that they aren&#8217;t supported?</p>
+<p>The table lists the file systems and network protocols that we has information for. If something is not on the list, that doesn&#8217;t mean that it doesn&#8217;t support it. It just means that we don&#8217;t know whether it supports it.</p>
+<p>If it definitely didn&#8217;t support it, then it would have been in the table with a &#8220;No&#8221;, like this one for <a href="https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew"> <code>Get­Volume­Information­By­Handle</code></a>:</p>
+<table class="cp3" style="border-collapse: collapse;" border="1" cellspacing="0" cellpadding="3">
+<tbody>
+<tr>
+<th>Technology</th>
+<th>Supported</th>
+</tr>
+<tr>
+<td>Server Message Block (SMB) 3.0 protocol</td>
+<td>No</td>
+</tr>
+<tr>
+<td>SMB 3.0 Transparent Failover (TFO)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>SMB 3.0 with Scale-out File Shares (SO)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Cluster Shared Volume File System (CsvFS)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Resilient File System (ReFS)</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>Since third parties can implement their own network protocols,¹ the Windows documentation cannot be comprehensive. It just documents what it knows. If you want information about some other network protocol or file system driver, you&#8217;ll have to consult the documentation for the product that implements the protocol or file system you are interested in.</p>
+<p>¹ I noticed <a href="https://openafs.org/pages/windows.html">AFS</a> and <a href="https://www.paragon-software.com/home/apfs-windows/"> APFS</a> and I didn&#8217;t even make it to the letter B.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261118-00/?p=112870/">If the Windows documentation doesn&#8217;t list a particular technology as supporting an operation, does that mean that it doesn&#8217;t support it?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261118-00/?p=112870/feed/</wfw:commentRss>
+			<slash:comments>3</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>In the Microsoft employee price list, why did the BASIC compiler cost less than the BASIC interpreter?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261117-00/?p=112866/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261117-00/?p=112866/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Tue, 17 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[History]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112866</guid>
+
+					<description><![CDATA[<p>Understanding the pricing scheme.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261117-00/?p=112866/">In the Microsoft employee price list, why did the BASIC compiler cost less than the BASIC interpreter?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>One of the questions in response to the <a title="Microsoft employee price list from 1987" href="https://devblogs.microsoft.com/oldnewthing/20261110-00/?p=112843"> Microsoft employee price list from 1987</a> came <a href="https://devblogs.microsoft.com/oldnewthing/20261110-00/?p=112843/&amp;commentid=144942#comment-144942"> from Peter Cooper Jr.</a>:</p>
+<blockquote class="q"><p>Why is the MS-DOS BASIC Compiler cheaper than the MS-DOS BASIC Interpreter?</p></blockquote>
+<p>That&#8217;s a good question. You&#8217;d think that since the compiler is more powerful, it should cost more.</p>
+<p>And it probably did cost more in stores.</p>
+<p>But this is the <i>employee</i> price list, and the policy for employee pricing at the time was to charge for cost of goods plus some administrative overhead for running the employee software program itself.¹</p>
+<p>I don&#8217;t know why the MS-DOS BASIC Compiler packaged product cost less to produce than the MS-DOS BASIC Interpreter, but I can guess.</p>
+<p>I bet the manual is thinner.</p>
+<p>The compiler product assumes you don&#8217;t need a tutorial on the BASIC language itself. The compiler manual concerns itself with instructions on how to run the compiler and details on how the compiled version of the language differs from the interpreted version. (For example, there may be some interpreter features that aren&#8217;t supported. Or there may be special comments you can put in your program that are used as directives to the compiler itself and which are ignored by the interpreter.)</p>
+<p>A thinner manual requires less paper and a smaller box, and it weighs less, which means that it costs less to produce, ship, and store.</p>
+<p>¹ This is no longer the policy for employee pricing. Employees can no longer, say, get Windows Server Datacenter Edition for the price of a cardboard box and a DVD.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261117-00/?p=112866/">In the Microsoft employee price list, why did the BASIC compiler cost less than the BASIC interpreter?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261117-00/?p=112866/feed/</wfw:commentRss>
+			<slash:comments>5</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>How can I ask a second program to show a dialog box as if it were shown by my first program?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261116-01/?p=112863/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261116-01/?p=112863/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Tue, 17 Nov 2026 05:54:01 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112863</guid>
+
+					<description><![CDATA[<p>You have to explicitly coordinate the window management.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261116-01/?p=112863/">How can I ask a second program to show a dialog box as if it were shown by my first program?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>Suppose you have two programs, one a GUI program and another a program that runs in the background. The GUI program asks the background program to do some work, and then the background program realizes that it needs to display a dialog box. How do you get that dialog box to appear as if it were shown by the GUI program?</p>
+<p>If you have the background program simply try to show a dialog box with no owner, then that dialog box has no relationship to the GUI program&#8217;s main window, which means that there is no requirement that the dialog box appear in front of the GUI program&#8217;s main window. If the GUI program didn&#8217;t disable its main window, then you have the situation where both windows (the GUI program main window and the dialog box) can be clicked on and interacted with. But if the GUI program <i>did</i> disable its main window, the fact that the main window can end up in front of the dialog box from the background program means that the user can&#8217;t see the dialog box that is preventing them from making progress.</p>
+<p>The GUI program should include its window handle as part of the call into the background program, so that the background program can use that window handle as the owner for the dialog box. If the dialog box is modal, this also disables the GUI program&#8217;s window, and if the user tries to click on the GUI program&#8217;s window, the window manager will instead put focus on the dialog box (and blink its title bar).</p>
+<p>Note that a cross-thread owner/owned relationship implicitly attaches the two threads&#8217; input queues, which means that <a title="AttachThreadInput is like taking two threads and pooling their money into a joint bank account, where both parties need to be present in order to withdraw any money" href="https://devblogs.microsoft.com/oldnewthing/20130619-00/?p=4043"> both threads need to to remain responsive to window messages in order for things to work properly</a> until the attachment is implicitly broken when the dialog box is destroyed.</p>
+<p>That&#8217;s the ideal situation, but maybe you aren&#8217;t in the ideal situation.</p>
+<p>For example, maybe the GUI program is written in a framework that doesn&#8217;t give you access to the window handle.</p>
+<p>You could have the GUI program call <code>Allow­Set­Foreground­Window()</code> with the process ID of the background program, so that the background program can call <code>Set­Foreground­Window()</code> on its dialog box and try to bring it to foreground.</p>
+<p>Now, if the GUI program didn&#8217;t have foreground, then <a title="Foreground activation permission is like love: You can't steal it, it has to be given to you" href="https://devblogs.microsoft.com/oldnewthing/20090220-00/?p=19083"> it can&#8217;t give away a permission that it doesn&#8217;t itself possess</a>, and the call to <code>Set­Foreground­Window</code> will fail.</p>
+<p>There&#8217;s not much more you can do at this point. The system doesn&#8217;t want to let random programs steal focus, and since there was no coordination with the window that <i>has</i> focus, you look like a random program as far as the system is concerned.</p>
+<p>But really, the solution is to fix the design.</p>
+<p>You&#8217;ve already separated the problem into a GUI process and a background process, so honor that separation: Don&#8217;t make the background process try to do UI. UI is the job of the GUI process.</p>
+<p>If the background process wants to display UI, it can ask the GUI process to do it, and then the GUI process can send back the dialog box result. One way to do this would be to have the background process return an error code like &#8220;UI required&#8221; and information about what UI it needs. The GUI process can then display the UI, gather the answer, and then call the background process again. Another way to do it is to have the background process call back into the GUI process when it needs UI, and the GUI process displays the UI, gathers the answer, and returns it to the background process. There are pros and cons to both of these designs, so you can choose the one that works best for you.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261116-01/?p=112863/">How can I ask a second program to show a dialog box as if it were shown by my first program?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261116-01/?p=112863/feed/</wfw:commentRss>
+			<slash:comments>1</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>How can I make it easier to use the helper class that lets me pass more than one parameter to co_await?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261113-00/?p=112856/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261113-00/?p=112856/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Fri, 13 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112856</guid>
+
+					<description><![CDATA[<p>Remove the need to have to type out the name of the helper.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261113-00/?p=112856/">How can I make it easier to use the helper class that lets me pass more than one parameter to &lt;CODE&gt;co_await&lt;/CODE&gt;?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>Last time, we figured out <a title="How can I pass more than one parameter to co_await?" href="https://devblogs.microsoft.com/oldnewthing/20261112-00/?p=112851"> how to pass more than one parameter to <code>co_await</code></a> by combining the multiple parameter into a single mega-parameter.</p>
+<p>But having to name the mega-parameter is annoying. Sure, today we have <code>widget_<wbr />with_<wbr />priority</code>, and then we get <code>gadget_<wbr />with_<wbr />timeout</code>, and then <code>doodad_<wbr />with_priority_<wbr />and_<wbr />timeout</code>, and oh my goodness it&#8217;s out of control.</p>
+<p>Instead of making the caller have to name the mega-parameter, we can create a helper method that produces it.</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+private:
+    bool inner_await_ready() const { return ⟦ ... ⟧; }
+
+    bool inner_await_suspend(std::coroutine_handle&lt;&gt; handle, int priority)
+    {
+        return internal_start(handle, priority);
+    }
+
+    auto inner_await_resume() const { return ⟦ ... ⟧; }
+
+    struct with_priority
+    {
+        with_priority(Widget const&amp; widget, int priority) :
+            m_widget(widget), m_priority(priority) {}
+
+        bool await_ready() const { return m_widget.inner_await_ready(); }
+
+        auto await_suspend(std::coroutine_handle&lt;&gt; handle)
+        {
+            return m_widget.inner_await_suspend(handle, m_priority);
+        }
+
+        auto await_ready() {
+            return m_widget.await_ready();
+        }
+
+        Widget const&amp; m_widget;
+        int m_priority;
+    };
+
+<span style="border: solid 1px currentcolor; border-bottom: none;">public:                                       </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    with_priority start(int priority = 0) {   </span>
+<span style="border: 1px currentcolor; border-style: none solid;">        return with_priority(*this, priority);</span>
+<span style="border: solid 1px currentcolor; border-top: none;">    }                                         </span>
+};
+</pre>
+<p>Now callers can write</p>
+<pre>co_await widget.start(priority);
+</pre>
+<p>As a convenience, I gave the <code>start()</code> method a default priority, so you can write</p>
+<pre>co_await widget.start();
+</pre>
+<p>You might even decide to bring back awaiting the widget directly, and having it mean &#8220;start with default priority&#8221;.</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+    ⟦ ... as before ... ⟧
+
+public:
+    with_priority start(int priority = 0) {
+        return with_priority(*this, priority);
+    }
+
+ <span style="border: solid 1px currentcolor; border-bottom: none;">   // Or you can await the Widget directly, which starts it with</span>
+ <span style="border: 1px currentcolor; border-style: none solid;">   // default priority.                                         </span>
+ <span style="border: 1px currentcolor; border-style: none solid;">   auto await_ready() const { return inner_await_ready(); }     </span>
+                                                                 
+ <span style="border: 1px currentcolor; border-style: none solid;">   auto await_suspend(std::coroutine_handle&lt;&gt; handle)           </span>
+ <span style="border: 1px currentcolor; border-style: none solid;">   {                                                            </span>
+ <span style="border: 1px currentcolor; border-style: none solid;">       return internal_start(handle, 0);                        </span>
+ <span style="border: 1px currentcolor; border-style: none solid;">   }                                                            </span>
+                                                                 
+ <span style="border: solid 1px currentcolor; border-top: none;">   auto await_resume() const { internal_await_resume(); }       </span>
+};
+</pre>
+<p>At this point you can simplify the class by just renaming the internal awaitable methods back to their original names.</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+public:
+    // Awaiting the Widget starts it with default priority.
+    bool <span style="border: solid 1px currentcolor;">await_ready</span>() const { return ⟦ ... ⟧; }
+
+    bool <span style="border: solid 1px currentcolor;">await_suspend</span>(std::coroutine_handle&lt;&gt; handle, int priority = 0)
+    {
+        return internal_start(handle, priority);
+    }
+
+    auto <span style="border: solid 1px currentcolor;">await_resume</span>() const { return ⟦ ... ⟧; }
+
+private:
+    struct with_priority
+    {
+        with_priority(Widget const&amp; widget, int priority) :
+            m_widget(widget), m_priority(priority) {}
+
+        bool await_ready() const { return m_widget.inner_await_ready(); }
+
+        auto await_suspend(std::coroutine_handle&lt;&gt; handle)
+        {
+            return m_widget.inner_await_suspend(handle, m_priority);
+        }
+
+        auto await_ready() {
+            return m_widget.await_ready();
+        }
+
+        Widget const&amp; m_widget;
+        int m_priority;
+    };
+
+public:
+    // start() lets you start with custom priority.
+    with_priority start(int priority = 0) {
+        return with_priority(*this, priority);
+    }
+};
+</pre>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261113-00/?p=112856/">How can I make it easier to use the helper class that lets me pass more than one parameter to &lt;CODE&gt;co_await&lt;/CODE&gt;?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261113-00/?p=112856/feed/</wfw:commentRss>
+			<slash:comments>1</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>How can I pass more than one parameter to co_await?</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261112-00/?p=112851/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261112-00/?p=112851/#respond</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Thu, 12 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[Code]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112851</guid>
+
+					<description><![CDATA[<p>The <CODE>co_await</CODE> operator takes only one parameter, but it can be a big parameter.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261112-00/?p=112851/">How can I pass more than one parameter to &lt;CODE&gt;co_await&lt;/CODE&gt;?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p>Suppose you have an awaitable object, but you want the caller to pass a bonus parameter when they do a <code>co_await</code>. For example, you may want the caller to be able to pass a priority or a timeout or something else that modifies how the await occurs.</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+    bool await_ready() const { return ⟦ ... ⟧; }
+
+    bool await_suspend(std::coroutine_handle&lt;&gt; handle)
+    {
+        int priority = ??? how do I get a priority ???;
+
+        return internal_start(handle, priority);
+    }
+
+    auto await_resume() { return ⟦ ... ⟧; }
+};
+
+// This doesn't work
+auto result = co_await (widget, priority);
+</pre>
+<p>So how do you pass two parameters to <code>co_await</code> so they can be used in <code>await_<wbr />suspend</code>?</p>
+<p>It&#8217;s a trick question. You can&#8217;t. The <code>co_await</code> operator takes only one parameter.</p>
+<p>So you&#8217;ll have to take all the things you want to use and put them into a single parameter.</p>
+<p>Wrap the awaitable object and its parameters into a larger object, and then await the larger object.</p>
+<p>First, let&#8217;s rename away the coroutine methods inside <code>Widget</code> since we aren&#8217;t awaiting it directly any more.</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+<span style="border: solid 1px currentcolor;">private:</span>
+    bool <span style="border: solid 1px currentcolor;">inner_</span>await_ready() const { return ⟦ ... ⟧; }
+
+    bool <span style="border: solid 1px currentcolor;">inner_</span>await_suspend(std::coroutine_handle&lt;&gt; handle)
+    {
+        int priority = ??? how do I get a priority ???;
+
+        return internal_start(handle, priority);
+    }
+
+    auto <span style="border: solid 1px currentcolor;">inner_</span>await_resume() const { return ⟦ ... ⟧; }
+};
+</pre>
+<p>Now we can add a priority parameter to the <code>inner_<wbr />await_<wbr />suspend</code>:</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+private:
+    bool inner_await_ready() const { return ⟦ ... ⟧; }
+
+    bool inner_await_suspend(std::coroutine_handle&lt;&gt; handle, <span style="border: solid 1px currentcolor;">int priority</span>)
+    {
+        return internal_start(handle, priority);
+    }
+
+    auto inner_await_resume() const { return ⟦ ... ⟧; }
+};
+</pre>
+<p>And finally, we create a helper class (which is a friend of <code>Widget</code>) that wraps the original object and its priority into a single new awaitable object.</p>
+<pre>struct Widget
+{
+    ⟦ ... other stuff ... ⟧
+
+private:
+    <span style="border: solid 1px currentcolor;">friend struct widget_with_priority;</span>
+
+    ⟦ ... as before ... ⟧
+};
+
+<span style="border: solid 1px currentcolor; border-bottom: none;">struct widget_with_priority                                          </span>
+<span style="border: 1px currentcolor; border-style: none solid;">{                                                                    </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    widget_with_priority(Widget const&amp; widget, int priority) :       </span>
+<span style="border: 1px currentcolor; border-style: none solid;">        m_widget(widget), m_priority(priority) {}                    </span>
+<span style="border: 1px currentcolor; border-style: none solid;"><!-- -->                                                                     </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    bool await_ready() const { return m_widget.inner_await_ready(); }</span>
+<span style="border: 1px currentcolor; border-style: none solid;"><!-- -->                                                                     </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    auto await_suspend(std::coroutine_handle&lt;&gt; handle)               </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    {                                                                </span>
+<span style="border: 1px currentcolor; border-style: none solid;">        return m_widget.inner_await_suspend(handle, m_priority);     </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    }                                                                </span>
+<span style="border: 1px currentcolor; border-style: none solid;"><!-- -->                                                                     </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    auto await_ready() {                                             </span>
+<span style="border: 1px currentcolor; border-style: none solid;">        return m_widget.await_ready();                               </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    }                                                                </span>
+<span style="border: 1px currentcolor; border-style: none solid;"><!-- -->                                                                     </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    Widget const&amp; m_widget;                                          </span>
+<span style="border: 1px currentcolor; border-style: none solid;">    int m_priority;                                                  </span>
+<span style="border: solid 1px currentcolor; border-top: none;">};                                                                   </span>
+</pre>
+<p>You can now do</p>
+<pre>co_await widget_with_priority(widget, priority);
+</pre>
+<p>This solves the problem but is rather unwieldy. We&#8217;ll address that next time.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261112-00/?p=112851/">How can I pass more than one parameter to &lt;CODE&gt;co_await&lt;/CODE&gt;?</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261112-00/?p=112851/feed/</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+		<item>
+		<title>I didn&#8217;t write a program with emoji, but I did use a control character</title>
+		<link>https://devblogs.microsoft.com/oldnewthing/20261111-00/?p=112848/</link>
+					<comments>https://devblogs.microsoft.com/oldnewthing/20261111-00/?p=112848/#comments</comments>
+		
+		<dc:creator><![CDATA[Raymond Chen]]></dc:creator>
+		<pubDate>Wed, 11 Nov 2026 15:00:00 +0000</pubDate>
+				<category><![CDATA[Old New Thing]]></category>
+		<category><![CDATA[History]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/oldnewthing/?p=112848</guid>
+
+					<description><![CDATA[<p>My program was a fairly simple one.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261111-00/?p=112848/">I didn&#8217;t write a program with emoji, but I did use a control character</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></description>
+										<content:encoded><![CDATA[<p><a href="https://martypc.blogspot.com/"> Adventures in PC Emulation</a> recently wrote about <a href="https://martypc.blogspot.com/2026/08/executable-emoji.html"> Executable Emoji</a>: Writing an MS-DOS program using machine code represented solely by Unicode emoji characters.</p>
+<p>This reminded me that back in the day I did something similar, but much less impressive: I wrote a <tt>reboot.com</tt> program that could be generated from the command line via <tt>echo</tt>.</p>
+<pre>echo <span style="border: solid 1px currentcolor; padding: 2px;"><kbd>Alt</kbd>+<kbd>Num2</kbd>,<kbd>Num0</kbd>,<kbd>Num5</kbd></span><span style="border: solid 1px currentcolor; border-left: none; padding: 2px;"><kbd>Ctrl</kbd>+<kbd>Y</kbd></span>&gt;reboot.com
+</pre>
+<p>The <kbd>Alt</kbd>+<kbd>Num2</kbd>,<kbd>Num0</kbd>,<kbd>Num5</kbd> means to press and hold the <kbd>Alt</kbd> while sequentially pressing and releasing <kbd>Num2</kbd>, <kbd>Num0</kbd>, <kbd>Num5</kbd> on the numeric keypad, and then releasing the <kbd>Alt</kbd> key. In the IBM PC 437 code page, this comes out looking like <span style="border: solid 1px currentcolor; padding: 1px;">═</span>, which is character 205, or hex <tt>0xCD</tt>.</p>
+<p>The byte <tt>0xCD</tt> is the machine code for the <tt>int</tt> instruction, for issuing a software interrupt. And <kbd>Ctrl</kbd>+<kbd>Y</kbd> generates character 25, or hex <tt>0x19</tt>, which completes the instruction: <tt>int 19h</tt>.</p>
+<p>Interrupt 19h was a sort-of not-very-good &#8220;reboot the system&#8221; interrupt. You can read about all the problems it has in <a href="https://www.ctyme.com/intr/rb-2270.htm"> Ralph Brown&#8217;s Interrupt List</a>.</p>
+<blockquote class="q"><p>This interrupt reboots the system without clearing memory or restoring interrupt vectors. Because interrupt vectors are preserved, this interrupt usually causes a system hang if any TSRs have hooked vectors from 00h through 1Ch, particularly INT 08.</p></blockquote>
+<p>Since this was not a very good way of rebooting the system, it was mostly just a parlor trick.</p>
+<p>But at least I did it.</p>
+<p>The post <a href="https://devblogs.microsoft.com/oldnewthing/20261111-00/?p=112848/">I didn&#8217;t write a program with emoji, but I did use a control character</a> appeared first on <a href="https://devblogs.microsoft.com/oldnewthing">The Old New Thing</a>.</p>
+]]></content:encoded>
+					
+					<wfw:commentRss>https://devblogs.microsoft.com/oldnewthing/20261111-00/?p=112848/feed/</wfw:commentRss>
+			<slash:comments>2</slash:comments>
+		
+		
+			<image url="https://devblogs.microsoft.com/oldnewthing/wp-content/uploads/sites/38/2025/10/banner-oldnewthing-blue.webp" type="image/png" />
+	</item>
+	</channel>
+</rss>
